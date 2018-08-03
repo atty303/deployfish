@@ -1,0 +1,9 @@
+name: my-service
+image: 123445564666.dkr.ecr.us-west-2.amazonaws.com/my-service:0.1.0
+cpu: ${cpu}
+memory: ${memory}
+ports:
+  - "80"
+environment:
+  - S3_BUCKET=my-bucket
+  - FOO=${env.PYENV_SHELL}

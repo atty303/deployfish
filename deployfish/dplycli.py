@@ -2,8 +2,9 @@
 from __future__ import print_function
 
 import importlib
-import pkg_resources
 import os
+import pkg_resources
+import pprint
 import random
 import subprocess
 import sys
@@ -679,6 +680,16 @@ def tunnel(ctx, tunnel_name):
     interim_port = random.randrange(10000, 64000, 1)
 
     service.tunnel(host, local_port, interim_port, port)
+
+
+@cli.command('print_config')
+@click.pass_context
+@click.argument('service_name')
+@needs_config
+def print_config(ctx, service_name):
+    config = ctx.obj['CONFIG']
+    service = config.get_service(service_name)
+    pprint.pprint(service)
 
 
 def main():

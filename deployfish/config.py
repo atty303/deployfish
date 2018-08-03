@@ -9,6 +9,8 @@ import click
 
 from deployfish.aws import build_boto3_session
 from deployfish.terraform import (NoSuchStateFile, Terraform, TerraformE)
+from deployfish.hooks import get_config_hook
+import deployfish.plugins
 
 
 def needs_config(func):
@@ -52,6 +54,7 @@ class Config(object):
 
     TERRAFORM_RE = re.compile('\$\{terraform.(?P<key>[A-Za-z0-9_]+)\}')
     ENVIRONMENT_RE = re.compile('\$\{env.(?P<key>.+)\}')
+    PLUGIN_RE = re.compile('\$\{(?P<ident>[^\.]+)\.(?P<args>[^}]+)\}')
 
     def __init__(self, filename='deployfish.yml', env_file=None, import_env=False, interpolate=True, tfe_token=None, use_aws_section=True):
         self.__raw = self.load_config(filename)
@@ -166,6 +169,8 @@ class Config(object):
             if m:
                 raw[key] = self.TERRAFORM_RE.sub(self.terraform.lookup(m.group('key'), replacers), value)
                 value = raw[key]
+                return
+
         m = self.ENVIRONMENT_RE.search(value)
         if m:
             # TODO: using __env_replace here is risky because of {service-name}
@@ -176,6 +181,15 @@ class Config(object):
             # In each replacer, we should be replacing [.- ] with _ and then
             # uppercasing the result.
             raw[key] = self.ENVIRONMENT_RE.sub(self.__env_replace(m.group('key'), replacers), value)
+            return
+
+        m = self.PLUGIN_RE.search(value)
+        if m:
+            fn = get_config_hook(m.group('ident'))
+            if fn:
+                external = fn(m.group('args'))
+                raw[key] = external
+                self.__replace(raw, key, external, replacers)
 
     def __do_list(self, raw, replacers):
         for i, value in enumerate(raw):
